@@ -2,24 +2,24 @@ import os
 import sys
 import unittest
 
-
-dir = os.path.dirname(__file__)
-path = os.path.join(dir, '../src')
-sys.path.insert(0, path)
-
-from pycel.excellib import ( 
+from pycel.excellib import (
     match,
     mod,
     count,
     countif,
     countifs,
-    xround,
+    xl_round,
     mid,
     date,
     yearfrac,
     isNa,
     sumif
 )
+
+current_dir = os.path.dirname(__file__)
+path = os.path.join(current_dir, '../src')
+sys.path.insert(0, path)
+
 
 class Test_SumIf(unittest.TestCase):
     def setup(self):
@@ -153,6 +153,7 @@ class Test_Date(unittest.TestCase):
     def test_year_regular(self):
         self.assertEqual(date(2008, 11, 3), 39755)
 
+
 class Test_Mid(unittest.TestCase):
     def setUp(self):
         pass
@@ -183,17 +184,19 @@ class Test_Round(unittest.TestCase):
 
     def test_nb_must_be_number(self):
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             round('er', 1)
 
     def test_nb_digits_must_be_number(self):
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             round(2.323, 'ze')
 
     def test_positive_number_of_digits(self):
-        self.assertEqual(xround(2.675, 2), 2.68)
+        self.assertEqual(xl_round(2.675, 2), 2.68)
 
     def test_negative_number_of_digits(self):
-        self.assertEqual(xround(2352.67, -2), 2400) 
+        self.assertEqual(xl_round(2352.67, -2), 2400)
 
 
 class Test_Count(unittest.TestCase):
@@ -246,6 +249,7 @@ class Test_Countifs(unittest.TestCase): # more tests might be welcomed
 
     def test_countifs_regular(self):
         self.assertEqual(countifs([7, 25, 13, 25], 25, [100, 102, 201, 20], ">100"), 1)
+
 
 class Test_Mod(unittest.TestCase):
     def setUp(self):
@@ -375,6 +379,7 @@ class Test_Match(unittest.TestCase):
     def test_boolean_in_descending_mode_with_any_array(self):    
         with self.assertRaises(Exception):
             match(True, [False, True, False], -1)
- 
+
+
 if __name__ == '__main__':
     unittest.main()

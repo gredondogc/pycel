@@ -1,11 +1,11 @@
 from os.path import abspath, dirname, join
 from sys import path
 
-if abspath(join(dirname(__file__), '../src')) not in path:
-    path.insert(0, join(dirname(__file__), '../src'))
-
 from pycel.excelutil import Cell
 from pycel.excelcompiler import ExcelCompiler
+
+if abspath(join(dirname(__file__), '../src')) not in path:
+    path.insert(0, join(dirname(__file__), '../src'))
 
 # RUN AT THE ROOT LEVEL
 excel = ExcelCompiler(join(dirname(__file__), "../example/example.xlsx")).excel

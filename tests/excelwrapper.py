@@ -45,7 +45,7 @@ def get_range():
     excel.connect()
     excel.set_sheet("Sheet2")
     excel_range = excel.get_range('Sheet2!A5:B7')
-    assert sum(map(len,excel_range.cells)) == 6
+    assert sum(map(len, excel_range.cells)) == 6
 
 
 def get_used_range():
@@ -63,8 +63,8 @@ def get_value():
 def get_formula():
     excel.connect()
     excel.set_sheet("Sheet1")
-    assert excel.get_formula(2,2) == "=SUM(A2:A4)"
-    assert excel.get_formula(3,12) is None
+    assert excel.get_formula(2, 2) == "=SUM(A2:A4)"
+    assert excel.get_formula(3, 12) is None
 
 
 def has_formula():
@@ -85,10 +85,10 @@ def get_formula_from_range():
 def get_formula_or_value():
     excel.connect()
     excel.set_sheet("Sheet1")
-    list = excel.get_formula_or_value("Sheet1!A2:C2")
-    assert list == ((u'2', u'=SUM(A2:A4)', u'=SIN(B2*A2^2)'),)
-    list = excel.get_formula_or_value("Sheet1!A1:A3")
-    assert list == ((u'1',), (u'2',), (u'3',))
+    fov_list = excel.get_formula_or_value("Sheet1!A2:C2")
+    assert fov_list == ((u'2', u'=SUM(A2:A4)', u'=SIN(B2*A2^2)'),)
+    fov_list = excel.get_formula_or_value("Sheet1!A1:A3")
+    assert fov_list == ((u'1',), (u'2',), (u'3',))
 
 
 def get_row():

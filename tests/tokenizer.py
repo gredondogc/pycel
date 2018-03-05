@@ -2,8 +2,10 @@
 
 from pycel.excelcompiler import shunting_yard
 
+
 def stringify(e):
     return "|".join([str(x) for x in e])
+
 
 range_inputs = [
     ('=$A1',
@@ -134,13 +136,16 @@ def test_range():
     for formula,rpn in range_inputs:
         assert stringify(shunting_yard(formula)) == rpn
 
+
 def test_if():
     for formula,rpn in if_inputs:
         assert stringify(shunting_yard(formula)) == rpn
 
+
 def test_whitespace():
     for formula,rpn in whitespace_inputs:
         assert stringify(shunting_yard(formula)) == rpn
+
 
 def test_basic():
     for formula,rpn in basic_inputs:
@@ -155,6 +160,7 @@ def test_math():
 def test_linest():
     for formula,rpn in linest_inputs:
         assert stringify(shunting_yard(formula)) == rpn
+
 
 def test_fancy_references():
     for formula,rpn in fancy_reference_inputs:
