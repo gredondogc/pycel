@@ -510,6 +510,13 @@ def concatenate(*args):
 
 
 def full_concatenate(a1, a2):
+    if is_number(a1) and is_number(a2):
+        return "{0}{1}".format(int(a1) if int(a1) == a1 else a1, int(a2) if int(a2) == a2 else a2)
+    elif is_number(a1) and not is_number(a2):
+        return "{0}{1}".format(int(a1) if int(a1) == a1 else a1, a2)
+    elif not is_number(a1) and is_number(a2):
+        return "{0}{1}".format(a1, int(a2) if int(a2) == a2 else a2)
+
     return "{0}{1}".format(a1, a2)
 
 
@@ -884,6 +891,7 @@ def alpha_value(text):
 
 
 def xl_eq(value1, value2):
+    # TODO do the cl_gt treament.
     if all(isinstance(value, number_types) for value in (value1, value2)):
         return float(value1) == float(value2)
     # in Excel capitalization does not matter
@@ -905,25 +913,37 @@ def xl_neq(value1, value2):
 
 
 def xl_gt(value1, value2):
-    if all(isinstance(value, number_types) for value in (value1, value2)):
-        return float(value1) > float(value2)
-    # in Excel capitalization does not matter
-    elif all(isinstance(val, string_types) for val in (value1, value2)):
-        ordered = sorted(value1.lower(), value2.lower())
-        return (not(value1.lower() == value2.lower()) and
-                ordered[-1] == value1.lower())
-    elif (isinstance(value1, string_types) and
-          isinstance(value2, number_types)):
-        return True
-    elif (isinstance(value1, number_types) and
-          isinstance(value2, string_types)):
-        return False
-    else:
-        try:
-            return value1 > value2
-        except TypeError:
-            logger.debug("Could not compare '{}' and '{}'".format(value1, value2))
+    """ TODO Lidar com value1 ou value2 já em erro """
+    try:
+        if all(isinstance(value, number_types) for value in (value1, value2)):
+            return float(value1) > float(value2)
+        # in Excel capitalization does not matter
+        elif all(isinstance(val, string_types) for val in (value1, value2)):
+            # TODO why all this overkill.
+            ordered = sorted((value1.lower(), value2.lower()))
+            return (not(value1.lower() == value2.lower()) and
+                    ordered[-1] == value1.lower())
+        elif (isinstance(value1, string_types) and
+              isinstance(value2, number_types)):
+            return True
+        elif (isinstance(value1, number_types) and
+              isinstance(value2, string_types)):
             return False
+        elif (value1 is None) and (value2 is None):
+            return False
+        elif (value1 is None) and (value2 is not None):
+            if isinstance(value2, number_types):
+                return value2 < 0
+            return True
+        else:
+            try:
+                return value1 > value2
+            except TypeError:
+                logger.debug("Could not compare '{}' and '{}'".format(value1, value2))
+                return False
+    except Exception as e:
+        # TODO handle errors
+        raise e
 
 
 def xl_gte(value1, value2):
