@@ -49,6 +49,10 @@ class CellRange(object):
     def address(self):
         return self.__address
 
+    def clean_name(self):
+        return self.address().replace('!', '_').replace(' ', '_').replace('(', '_').replace(')', '_').replace(
+            ':', '_to_').replace('+', '_').replace('-', '_').lower()
+
     @property
     def celladdrs(self):
         return self.__celladdr
@@ -125,6 +129,10 @@ class Cell(object):
     def formula(self):
         return self.__formula
 
+    # Used for formula replacement. TODO Test side effects.
+    def set_formula(self, new_formula):
+        self.__formula = new_formula
+
     @property
     def id(self):
         return self.__id
@@ -145,7 +153,8 @@ class Cell(object):
         self.compile()
 
     def clean_name(self):
-        return self.address().replace('!', '_').replace(' ', '_')
+        return self.address().replace(
+            '!','_').replace(' ','_').replace('(','_').replace(')', '_').replace('+', '_').replace('-', '_').lower()
 
     def address(self, absolute=True):
         if absolute:
@@ -192,7 +201,12 @@ class Cell(object):
     @staticmethod
     def resolve_cell(excel, address, sheet=None):
         r = excel.get_range(address)
-        f = r.Formula if r.Formula.startswith('=') else None
+        try:
+            f = r.Formula if r.Formula.startswith('=') else None
+        except:
+            print("{0} {1}".format(address, r.Formula))
+            raise
+
         v = r.Value
 
         sh, c, r = split_address(address)
@@ -238,7 +252,7 @@ class Cell(object):
                     row.append(cl)
                 cells.append(row)
 
-            #return as vector
+            # return as vector
             if numrows == 1:
                 cells = cells[0]
             elif numcols == 1:
@@ -296,7 +310,7 @@ def split_address(address):
     if address.find('!') > 0:
         sheet, address = address.split('!')
 
-    #ignore case
+    # ignore case
     address = address.upper()
 
     # regular <col><row> format

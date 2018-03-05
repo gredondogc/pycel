@@ -9,6 +9,7 @@ from networkx.drawing.nx_pydot import write_dot
 from networkx.readwrite.gexf import write_gexf
 import pickle
 from six import itervalues
+
 try:
     import matplotlib.pyplot as plt
 except ImportError:
@@ -161,6 +162,16 @@ class Spreadsheet(object):
         for c in self.graph.predecessors_iter(cell):
             self.print_value_tree(c.address(), indent+1)
 
+    def get_formula_tree(self, addr, cell_list):
+        cell = self.cellmap.get(addr, None)
+        if cell is None:
+            print("Address not Found {0}".format(addr))
+            return
+
+        cell_list.append(cell)
+        for c in self.graph.predecessors_iter(cell):
+            self.get_formula_tree(c.address(), cell_list)
+
     def recalculate(self):
         for cell in reversed(self.cellmap.values()):
             if isinstance(cell, CellRange):
@@ -207,8 +218,8 @@ class Spreadsheet(object):
             """
 
             result = self.evaluate(address)
-            if result is None:
-                return 0.
+            # if result is None:  # TODO isto não faz sentido. Se fizeres xl_min com isto estragava tudo
+            #     return 0.
             return result
 
         def eval_range(rng):
@@ -284,14 +295,14 @@ class OperatorNode(ASTNode):
         # convert the operator to python equivalents
         self.opmap = {
             "^": "**",
-            "&": "+",
+            "&": "full_concatenate",
             "": "+",  # union
             "=": "xl_eq",
             "<>": "xl_neq",
             ">": "xl_gt",
             "<": "xl_lt",
             ">=": "xl_gte",
-            "<=": "xl_lte",
+            "<=": "xl_lte"
         }
 
     def emit(self, ast, context=None):
@@ -314,12 +325,12 @@ class OperatorNode(ASTNode):
 
         # work around because None < 0 is True (happens on blank cells)
         # TODO: make this work for string to number and string to string comparisons like Excel
-        if op in ('xl_lt', 'xl_gt', 'xl_lte', 'xl_gte', 'xl_eq'):
+        if op in ('xl_lt', 'xl_gt', 'xl_lte', 'xl_gte', 'xl_eq', 'xl_neq', 'full_concatenate'):
             ss = "{}({}, {})".format(op,
                                      args[0].emit(ast, context=context),
                                      args[1].emit(ast, context=context))
         else:
-            ss = args[0].emit(ast, context=context) + op + args[1].emit(ast, context=context)
+            ss = "{0} {1} {2}".format(args[0].emit(ast, context=context), op, args[1].emit(ast, context=context))
 
         # avoid needless parentheses
         if parent and not isinstance(parent, FunctionNode):
@@ -414,20 +425,20 @@ class FunctionNode(ASTNode):
                 result += args[0].emit(ast, context=context)
             else:
                 # multiple rows
-                result += ",".join(['[' + n.emit(ast, context=context) + ']' for n in args])
+                result += ", ".join(['[' + n.emit(ast, context=context) + ']' for n in args])
             result += ']'
         elif fun == "arrayrow":
             # simply create a list
-            result += ",".join([n.emit(ast, context=context) for n in args])
+            result += ", ".join([n.emit(ast, context=context) for n in args])
         # TODO: figure out what is "linestmario"
         elif fun == "linest" or fun == "linestmario":
-            result = fun + "(" + ",".join([n.emit(ast, context=context) for n in args])
+            result = fun + "(" + ", ".join([n.emit(ast, context=context) for n in args])
             if not context:
                 degree, coef = -1, -1
             else:
-                #linests are often used as part of an array formula spanning multiple cells,
-                #one cell for each coefficient.  We have to figure out where we currently are
-                #in that range
+                # linests are often used as part of an array formula spanning multiple cells,
+                # one cell for each coefficient.  We have to figure out where we currently are
+                # in that range
                 degree, coef = get_linest_degree(context.excel, context.curcell)
 
             # if we are the only linest (degree is one) and linest is nested -> return vector
@@ -444,13 +455,13 @@ class FunctionNode(ASTNode):
                     result += ")[%s]" % (coef-1)
 
         elif fun == "and":
-            result = "all([" + ",".join([n.emit(ast, context=context) for n in args]) + "])"
+            result = "all([" + ", ".join([n.emit(ast, context=context) for n in args]) + "])"
         elif fun == "or":
-            result = "any([" + ",".join([n.emit(ast, context=context) for n in args]) + "])"
+            result = "any([" + ", ".join([n.emit(ast, context=context) for n in args]) + "])"
         else:
             # map to the correct name
             f = self.funmap.get(fun,fun)
-            result = f + "(" + ",".join([n.emit(ast, context=context) for n in args]) + ")"
+            result = f + "(" + ", ".join([n.emit(ast, context=context) for n in args]) + ")"
 
         return result
 
@@ -706,7 +717,7 @@ class ExcelCompiler(object):
     def make_python_model(self, seeds):
         pass
 
-    def gen_graph(self, seed, sheet=None):
+    def gen_graph(self, seed, sheet=None, formulas_replace=None):
         """
         Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
         generate a Spreadsheet instance that captures the logic and control
@@ -755,6 +766,14 @@ class ExcelCompiler(object):
                 self.excel.set_sheet(cursheet)
 
             # parse the formula into code
+            # HACK??? TODO
+            if formulas_replace:
+                if c1.formula:
+                    for fr in formulas_replace:
+                        new_formula = c1.formula.replace(fr[0], fr[1])
+                        if new_formula != c1.formula:
+                            c1.set_formula(new_formula)
+
             pystr, ast = self.cell2code(c1)
 
             # set the code & compile it (will flag problems sooner rather than later)
@@ -834,6 +853,9 @@ class ExcelCompiler(object):
 if __name__ == '__main__':
     # some test formulas
     inputs = [
+              '=A1 & A2 & A3',
+              '=concatenate(A1,A2,A3)',
+              '=I158*_get_sum_bk4_bk109958(D154,D155)^-3',
               '=SUM((A:A 1:1))',
               '=A1',
               '=atan2(A1,B1)',
@@ -862,7 +884,7 @@ if __name__ == '__main__':
 
               # E. W. Bachtal's test formulae
               '=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &   "  more ""test"" text"',
-              #'=+ AName- (-+-+-2^6) = {"A","B"} + @SUM(R1C1) + (@ERROR.TYPE(#VALUE!) = 2)',
+              # '=+ AName- (-+-+-2^6) = {"A","B"} + @SUM(R1C1) + (@ERROR.TYPE(#VALUE!) = 2)',
               '=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
               '=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, ' +
                   'R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] ' +

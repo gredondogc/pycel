@@ -344,7 +344,7 @@ class ExcelParser(ExcelParserTokens):
                     tokens.add(token, self.TOK_TYPE_OPERAND)
                     token = ""
                 tokens.addRef(tokenStack.pop())
-                tokens.add(",", self.TOK_TYPE_ARGUMENT)
+                tokens.add(", ", self.TOK_TYPE_ARGUMENT)
                 tokenStack.push(tokens.add("ARRAYROW", self.TOK_TYPE_FUNCTION, self.TOK_SUBTYPE_START))
                 offset += 1
                 continue

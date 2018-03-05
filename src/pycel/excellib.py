@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from logging import getLogger
 import math
 from numpy import linalg, vander, zeros
-from pycel.excelutil import (date_from_int, find_corresponding_index, flatten,
+from pahws.pycel.excelutil import (date_from_int, find_corresponding_index, flatten,
                              integer_types, is_leap_year, is_number, list_types,
                              normalize_year, number_types, string_types)
 
@@ -14,7 +14,7 @@ __all__ = ('average', 'count', 'countif', 'countifs', 'date', 'index', 'isNa', '
            'value', 'vlookup', 'yearfrac',
            'xl_log', 'xl_round',
            'xl_eq', 'xl_neq', 'xl_gt', 'xl_gte', 'xl_lt', 'xl_lte',
-           'xl_max', 'xl_min', 'xl_sum',
+           'xl_max', 'xl_min', 'xl_sum', 'concatenate', 'full_concatenate', 'text', 'substitute',
            'FUNCTION_MAP')
 
 
@@ -111,7 +111,8 @@ def xl_max(*args):
     """
 
     # ignore non-numeric cells
-    data = [x for x in flatten(args) if is_number(x, number_types)]
+    data = [x for x in flatten(args) if is_number(x)]
+    # data = [x for x in flatten(args) if is_number(x, number_types)]
 
     # however, if no non numeric cells, return zero (is what excel does)
     if len(data) < 1:
@@ -285,6 +286,8 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
         the column number in the range containing the return value,
         Exact Match or Approximate Match – indicated as 0/FALSE or 1/TRUE).
 
+    We'll use the first element to check the array dimension
+
     :param lookup_value:
     :param table_array:
     :param col_index_num:
@@ -293,19 +296,34 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
 
     """
 
+    single_column = type(table_array[0]) not in (tuple, list)
+
     if range_lookup:
         if not isinstance(lookup_value, number_types):
             raise ValueError("Can only do approximate VLOOKUPS with numbers")
         idx = -1
         for idx in range(len(table_array) - 1):
-            if all((table_array[idx][0] <= lookup_value,
-                    table_array[idx + 1][0] > lookup_value)):
-                return table_array[idx][col_index_num - 1]
-        return table_array[idx+1][col_index_num - 1]
+            if single_column:
+                if all((table_array[idx] <= lookup_value,
+                        table_array[idx + 1] > lookup_value)):
+                    return table_array[idx]
+            else:
+                if all((table_array[idx][0] <= lookup_value,
+                        table_array[idx + 1][0] > lookup_value)):
+                    return table_array[idx][col_index_num - 1]
+        if single_column:
+            return table_array[idx+1]
+        else:
+            return table_array[idx+1][col_index_num - 1]
     else:
-        values = [row[0] for row in table_array]
-        if lookup_value in values:
-            return table_array[values.index(lookup_value)][col_index_num - 1]
+        if single_column:
+            values = [row for row in table_array]
+            return table_array[values.index(lookup_value)]
+        else:
+            values = [row[0] for row in table_array]
+            if lookup_value in values:
+                return table_array[values.index(lookup_value)][col_index_num - 1]
+
     return None
 
 
@@ -471,6 +489,51 @@ def count(*args):
             total += 1
 
     return total
+
+
+def concatenate(*args):
+    try:
+        largs = list(args)
+
+        total_str = ""
+
+        for arg in largs:
+            if type(arg) == list:
+                for arg2 in arg:
+                    total_str = "{0}{1}".format(total_str, arg2 or "")
+            else: # int() is used for text representation of numbers
+                total_str = "{0}{1}".format(total_str, arg or "")
+
+        return total_str
+    except Exception as e:
+        return "Error!!!"
+
+
+def full_concatenate(a1, a2):
+    return "{0}{1}".format(a1, a2)
+
+
+def substitute(input_str, a, b):
+    return input_str.replace(a, b)
+
+
+def text(input_value, format_str):
+    try:
+        if input_value is None:
+            return ""
+
+        if is_number(input_value):
+            if format_str == "0,0000":
+                if type(input_value) is str:
+                    return "{0:0.4f}".format(float(input_value))
+
+                return "{0:0.4f}".format(input_value)
+            else:
+                return str(input_value)
+
+        return str(input_value)
+    except Exception as e:
+        return "#value"
 
 
 def countif(rng, criteria):

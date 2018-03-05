@@ -23,7 +23,7 @@ except ImportError:
 class ExcelWrapper(object):
     __metaclass__ = ABCMeta
 
-    @abstractproperty
+    @abstractmethod
     def rangednames(self):
         return
 
@@ -275,11 +275,11 @@ class ExcelOpxWrapper(ExcelWrapper):
             return None
 
         results = []
-        for named_range in self.workbook.get_named_ranges():
+        for named_range in self.workbook.defined_names.definedName:
             for worksheet, range_alias in named_range.destinations:
                 tuple_name = (len(results) + 1,
                               str(named_range.name),
-                              str(worksheet.title + '!' + range_alias))
+                              str(worksheet.title() + '!' + range_alias))
                 results.append([tuple_name])
         return results
 
@@ -317,8 +317,16 @@ class ExcelOpxWrapper(ExcelWrapper):
             sheet = self.workbook[title]
             sheet_do = self.workbook_do[title]
 
+        # TODO Check this
+        # print("############# " + str(sheet))
         cells = [[cell for cell in row] for row in sheet.iter_rows(address)]
+        # print("##" + str(cells))
         cells_do = [[cell for cell in row] for row in sheet_do.iter_rows(address)]
+
+        # cells2 = [[cell for cell in row] for row in sheet[address]]
+        # cells_do2 = [[cell for cell in row] for row in sheet_do[address]]
+        # TODO
+        # print("-------------" + str(sheet) + "\n" + str(cells) + "\n" + str(cells2))
 
         return OpxRange(cells, cells_do)
 
@@ -330,7 +338,9 @@ class ExcelOpxWrapper(ExcelWrapper):
 
     def get_cell(self, row, col):
         # this could be improved in order not to call get_range
-        return self.get_range(self.workbook.active.cell(None, row, col).coordinate)
+        # TODO I beliave the next line had a bug
+        # return self.get_range(self.workbook.active.cell(None, row, col).coordinate)
+        return self.get_range(self.workbook.active.cell(row, col).coordinate)
 
     def get_row(self, row):
         return [self.get_value(row, col+1) for col in range(self.workbook.active.max_column)]
